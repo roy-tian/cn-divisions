@@ -21,6 +21,14 @@
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roy-tian/cn-divisions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/roy-tian/cn-divisions/issues"
+  },
+  "homepage": "https://github.com/roy-tian/cn-divisions#readme",
   "devEngines": {
     "runtime": {
       "name": "node",
