@@ -47,6 +47,28 @@ date.
    `pinyinPrefix` carried sort markers (`~1`, `~2`, `~3`) in the source; these
    are normalized to the real pinyin initials (`t`, `x`, `a`).
 
+## Code and hierarchy conventions
+
+- Codes are stored trimmed to their significant length: province 2 digits
+  (`11`), city 4 (`1101`), county 6 (`110101`), township 9 (`110101001`).
+  Official 6-digit GB/T 2260 codes and 12-digit NBS codes (township +
+  trailing `000`) are accepted by every lookup and resolved exact/longest
+  first; `normalizeCode()` exposes the mapping. Trims follow official suffix
+  shapes only — province `…0000`, city `…00`, NBS county aggregation
+  (`…000000`); unrecognized codes (e.g. `130299`, `110101999000`) return
+  not-found rather than collapsing onto an ancestor. Village-level 12-digit
+  codes are out of scope and intentionally do not resolve.
+- District-less prefecture cities (东莞, 中山, 儋州) and province-direct
+  county-level cities (济源, 仙桃, 潜江, 天门, XPCC cities, Hainan directs)
+  carry a same-named placeholder level-2 layer between city and township
+  (东莞市 `4419` → 东莞市 `441900` → streets). These county-level cities are
+  typed as level 1 (city); their official 12-digit codes resolve to the
+  placeholder record (`441900000000` → `441900`).
+- Taiwan has city/county and a few district levels only (no data below
+  counties); Hong Kong and Macau are chains of SAR → placeholder layer →
+  districts. Data under `71`/`81`/`82` is older than the mainland snapshot;
+  treat it as indicative.
+
 ## Regenerating artifacts
 
 - `sql/postgresql/divisions.sql` is generated from the JSONL

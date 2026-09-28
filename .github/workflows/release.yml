@@ -14,11 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
-          registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run check
       - run: npm test
@@ -29,13 +28,17 @@ jobs:
           PKG_VERSION="$(node -p "require('./package.json').version")"
           PKG_NAME="$(node -p "require('./package.json').name")"
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "### Publish skipped — tag/version mismatch" >> "$GITHUB_STEP_SUMMARY"
+            echo "Tag \`v$TAG_VERSION\` does not match package.json version \`$PKG_VERSION\`; nothing was published." >> "$GITHUB_STEP_SUMMARY"
             echo "tag v$TAG_VERSION does not match package $PKG_VERSION - skipping publish"
             exit 0
           fi
           if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "### Publish skipped — already on npm" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`$PKG_NAME@$PKG_VERSION\` is already published to npm; nothing was published." >> "$GITHUB_STEP_SUMMARY"
             echo "$PKG_NAME@$PKG_VERSION is already on npm - skipping publish"
             exit 0
           fi
-          npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # verbose surfaces the registry's reason when the OIDC token
+          # exchange fails; otherwise npm silently falls back to ENEEDAUTH
+          npm publish --provenance --access public --loglevel verbose

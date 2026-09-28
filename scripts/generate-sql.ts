@@ -21,7 +21,19 @@ const divisions: Division[] = readFileSync(
 
 const header = `-- Generated from data/divisions.jsonl — do not edit by hand.
 -- Regenerate with: npm run generate:sql
--- Table shape: code PK, parent_code, level (0 province, 1 city, 2 county, 3 township), name, pinyin_prefix, pinyin, full_name
+-- Columns: code PK, parent_code, level (0 province, 1 city, 2 county, 3 township), name, pinyin_prefix, pinyin, full_name
+
+CREATE TABLE IF NOT EXISTS "divisions" (
+  "code" text PRIMARY KEY,
+  "parent_code" text NOT NULL,
+  "level" smallint NOT NULL CHECK ("level" BETWEEN 0 AND 3),
+  "name" text NOT NULL,
+  "pinyin_prefix" text NOT NULL,
+  "pinyin" text NOT NULL,
+  "full_name" text NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "divisions_parent_code_idx" ON "divisions" ("parent_code");
 `;
 
 const chunks: string[] = [header];
