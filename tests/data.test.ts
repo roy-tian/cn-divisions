@@ -92,3 +92,14 @@ test("committed SQL matches the JSONL payload (round trip)", () => {
   assert.equal(fromSql.length, divisions.length);
   assert.deepEqual(fromSql, divisions as unknown[]);
 });
+
+test("seed SQL opens with CREATE TABLE DDL", () => {
+  const head = readFileSync(
+    new URL("../sql/postgresql/divisions.sql", import.meta.url),
+    "utf-8",
+  ).slice(0, 2000);
+  assert.ok(head.includes('CREATE TABLE IF NOT EXISTS "divisions"'));
+  assert.ok(
+    head.includes('CREATE INDEX IF NOT EXISTS "divisions_parent_code_idx"'),
+  );
+});
