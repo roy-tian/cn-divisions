@@ -4,7 +4,34 @@ All notable changes to this project are documented in this file. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.3] — 2026-09-29
+
+### Upgrade notes
+
+Most callers need no changes; check these:
+
+- **TypeScript: records are `readonly`.** Assigning to a field of a returned
+  record (or of your own type that `extends Division`) no longer compiles —
+  copy first with `{ ...d }`. Functions receiving `subtree()` children should
+  take `readonly DivisionNode[]` (or pass `[...node.children]`).
+  `LEVEL_NAMES` is frozen. Record writes already threw at runtime since
+  0.1.2.
+- **`search()` throws on mistyped values.** A `level` that isn't the number
+  0–3 (e.g. `"0"` straight from a query string) or a non-string `name` /
+  `pinyin` / `pinyinPrefix` now throws a `TypeError` instead of returning
+  `[]`. Convert input first (`Number(level)`) or catch the error.
+- **12-digit county aggregation codes resolve to the county.** 362 `…000000`
+  inputs change from a 9-digit level-3 record to the 6-digit county: 库伦旗
+  `150524000000`, 姑苏区 `320508000000`, 西沙区 `460301000000`, 南沙区
+  `460302000000` and the 358 Taiwan districts (`71xxxx000000`). The old
+  9-digit codes still resolve, so nothing errors, but re-normalize stored
+  results of `normalizeCode()` / `getDivision()` if you join or dedupe on
+  them.
+- **`children("0")` returns the 34 province-level entries** instead of `[]`;
+  if you used `"0"` as a "nothing selected" sentinel, handle it before
+  calling.
+
+Code that only reads `data/divisions.jsonl` or the SQL seed is unaffected.
 
 ### Added
 
