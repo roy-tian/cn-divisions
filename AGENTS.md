@@ -22,7 +22,12 @@ Guidance for coding agents working in this repository.
   via native type stripping (no tsx/ts-node). The published runtime target
   stays Node ≥ 18.
 - Before finishing, run what CI runs:
-  `npm run format:check && npm run check && npm test && npm run build`.
+  `npm run format:check && npm run check && npm test && npm run build && node scripts/smoke-dist.mjs`.
+  CI also runs that dist smoke test on Node 18/20/22, so `src/` must not use
+  JS or Node APIs newer than Node 18. Nothing checks this statically:
+  `tsconfig` pins `lib` to ES2022, which only rules out newer JS built-ins —
+  Node APIs are still typed from `@types/node` 24 — and the smoke test only
+  catches the code paths it exercises.
 - Single test: `node --test --test-name-pattern="<test name>" tests/api.test.ts`.
 - Formatting is Prettier with default options (no config file); `data/`,
   `sql/` and `dist/` are excluded.
@@ -46,6 +51,10 @@ Guidance for coding agents working in this repository.
 - Code lookup tries the exact code first, then only official suffix trims
   (`officialTrim` / `codeCandidates`). Invalid codes like `130299` or
   `110101999000` must return not-found, never collapse onto an ancestor.
+  A 12-digit county aggregation code (`…000000`) resolves to the county, not
+  to a level-3 record numbered `000` under it — a township
+  (`150524000000` → `150524`) or a same-named mirror (`710101000000` →
+  `710101`); only a level-2 placeholder (`419001000`) keeps the 9-digit hit.
 - Same-named placeholder level-2 layers (东莞市 `4419` → 东莞市 `441900`) and
   consecutive same-named `ancestors()` entries are intentional, not data bugs.
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master, develop]
   pull_request:
 
 permissions:
@@ -12,8 +12,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -23,6 +23,29 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Smoke-test both entrypoints
-        run: |
-          node -e "const m = require('./dist/index.cjs'); if (!m.getDivision('11')) { process.exit(1) } console.log('cjs ok')"
-          node -e "import('./dist/index.js').then((m) => { if (!m.getDivision('11')) { process.exit(1) } console.log('esm ok') })"
+        run: node scripts/smoke-dist.mjs
+
+  # The published runtime target is Node >= 18, but tests need Node >= 23.6
+  # (native type stripping). Build on 24, then run the dist smoke test on
+  # each older supported runtime.
+  runtime:
+    name: runtime (node ${{ matrix.node }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Smoke-test both entrypoints
+        run: node scripts/smoke-dist.mjs
