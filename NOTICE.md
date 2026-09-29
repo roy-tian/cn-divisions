@@ -1,100 +1,46 @@
-# Data provenance and normalization — 数据出处与规范化说明
+# 数据来源与规范化说明
 
-## What this data is
+**中文** | [English](NOTICE_en.md)
 
-`data/divisions.jsonl` holds China's administrative divisions (行政区划) in the
-GB/T 2260 code system: 34 province-level entries (23 省 including 台湾省,
-5 自治区, 4 直辖市, 香港, 澳门), then cities, counties, and township/street entries —
-43,114 rows in total, each with pinyin (spaced syllables and initial letter)
-and a full official name.
+## 数据与来源
 
-## Sources
+`data/divisions.jsonl` 收录 GB/T 2260 代码体系下的中国行政区划共 43,114 条，涵盖 34 个省级行政区（23 个省含台湾省、5 个自治区、4 个直辖市、2 个特别行政区）及其下的市、区县、乡镇/街道，每条含拼音和全称。代码与名称是以下机构发布的官方公开数据：
 
-Administrative-division codes and names are official public data published by:
+- **民政部**：行政区划代码，县级及以上
+- **国家统计局**：统计用区划代码和城乡划分代码，乡镇/街道级
 
-- 民政部 (Ministry of Civil Affairs) — 行政区划代码, county level and above
-- 国家统计局 (National Bureau of Statistics) — 统计用区划代码和城乡划分代码,
-  township/street level
+本仓库数据取自某下游项目的种子数据导出，其上游发布日期没有记载，因此按下文方法断代。
 
-The dataset in this repository was derived from a downstream project's seed
-dump. The exact upstream publication date of that dump is undocumented; see
-"Snapshot dating" below.
+## 快照断代
 
-## Snapshot dating
+导出文件没有版本标记。以下区划变更均已体现在数据中：
 
-The dump carries no version stamp, so it is dated by change markers inside the
-data:
+| 标志物                     | 变更时间 |
+| -------------------------- | -------- |
+| 蓟州区（而非蓟县）         | 2016-07  |
+| 莱芜区（地级莱芜市已撤销） | 2019-01  |
+| 龙港市                     | 2019-08  |
+| 新星市                     | 2021-01  |
+| 白杨市                     | 2023-04  |
 
-| Marker                  | Change date | Present in data | Implies   |
-| ----------------------- | ----------- | --------------- | --------- |
-| 蓟州区 (not 蓟县)       | 2016-07     | yes             | ≥ 2016-07 |
-| 莱芜区 (地级莱芜市已撤) | 2019-01     | yes             | ≥ 2019-01 |
-| 龙港市                  | 2019-08     | yes             | ≥ 2019-08 |
-| 新星市                  | 2021-01     | yes             | ≥ 2021-01 |
-| 白杨市                  | 2023-04     | yes             | ≥ 2023-04 |
+因此快照不早于 2023 年 4 月，上限无法确定。`DATA_VERSION` 暂记为 `snapshot-2023`，改用注明日期的上游发布更新数据时，应改为该日期。
 
-`DATA_VERSION` is therefore exported as `snapshot-2023`: the snapshot is at
-least as new as April 2023. No upper bound is established. When the dataset is
-refreshed from a dated upstream publication, update `DATA_VERSION` to that
-date.
+## 对源数据的规范化
 
-## Normalization applied to the source dump
+1. **剔除“国外”伪树**（`91`、`9100`、`910000`、`910000000`）：这是下游应用的筛选约定，并非行政区划。
+2. **保留台湾 `71`、香港 `81`、澳门 `82`** 及其标准代码，并把源数据中作为排序标记的 `pinyinPrefix`（`~1`、`~2`、`~3`）改为真实的拼音首字母（`t`、`x`、`a`）。
 
-1. **Dropped the "国外" pseudo tree** (`91`, `9100`, `910000`, `910000000`).
-   It was a downstream application's filter convention, not an administrative
-   division.
-2. **Kept 台湾 `71` / 香港 `81` / 澳门 `82`** with their standard codes. Their
-   `pinyinPrefix` carried sort markers (`~1`, `~2`, `~3`) in the source; these
-   are normalized to the real pinyin initials (`t`, `x`, `a`).
+以上规则在 `scripts/import-seed.ts` 中实现，重新导入（`npm run import:seed -- --source=<file>`）时自动应用。
 
-## Code and hierarchy conventions
+## 代码与层级约定
 
-- Codes are stored trimmed to their significant length: province 2 digits
-  (`11`), city 4 (`1101`), county 6 (`110101`), township 9 (`110101001`).
-  Official 6-digit GB/T 2260 codes and 12-digit NBS codes (township +
-  trailing `000`) are accepted by every lookup and resolved exact/longest
-  first; `normalizeCode()` exposes the mapping. Trims follow official suffix
-  shapes only — province `…0000`, city `…00`, NBS township `…000` (12 → 9
-  digits), NBS county aggregation (`…000000`); unrecognized codes (e.g.
-  `130299`, `110101999000`) return not-found rather than collapsing onto an
-  ancestor. A county aggregation code resolves to the county even when a
-  level-3 record under it is numbered `000` — a township (`150524000000` →
-  库伦旗 `150524`, not 库伦街道 `150524000`) or a same-named mirror
-  (`710101000000` → 中正区 `710101`); only a level-2 placeholder keeps the
-  9-digit hit (`419001000000` → `419001000`). Village-level 12-digit codes
-  are out of scope and intentionally do not resolve.
-- District-less prefecture cities (东莞, 中山, 儋州) and province-direct
-  county-level cities (济源, 仙桃, 潜江, 天门, XPCC cities, Hainan directs)
-  carry a same-named placeholder level-2 layer between city and township
-  (东莞市 `4419` → 东莞市 `441900` → streets). These county-level cities are
-  typed as level 1 (city); their official 12-digit codes resolve to the
-  placeholder record (`441900000000` → `441900`).
-- Exceptions to the code lengths: province-direct county-level cities keep
-  their 6-digit official code at level 1 and their placeholder takes a
-  9-digit `…000` code (济源市 `419001` → 济源市 `419001000` → 沁园街道
-  `419001001`); HK/MO districts hang off a 6-digit layer with 9-digit codes
-  (`810000` → `810101000`). A child code is therefore not always prefixed by
-  its parent's — follow `parentCode` instead of truncating codes.
-- Taiwan has 20 cities/counties and 358 districts/townships (level 2), each
-  mirrored by a same-named level-3 record (中正区 `710101` → `710101000`);
-  there is no real township data. Hong Kong and Macau are chains of SAR →
-  two same-named layers (`8100`, `810000`) → districts (Macau: 堂区). Since
-  exact matches win, the official codes `810000` / `820000` resolve to the
-  level-2 layer, not to `81` / `82`. Data under `71`/`81`/`82` is older than
-  the mainland snapshot; treat it as indicative.
+- **代码位数**：省 2 位（`11`）、市 4 位（`1101`）、区县 6 位（`110101`）、乡镇/街道 9 位（`110101001`）。例外：省直辖县级市在级 1 沿用六位官方码，其占位层用九位 `…000` 码（济源市 `419001` → 济源市 `419001000` → 沁园街道 `419001001`）；港澳的区挂在六位中间层下，用九位码（`810000` → `810101000`）。因此子级代码不一定以父级代码开头，请沿 `parentCode` 回溯，不要截位推算。
+- **官方代码**：查询函数都接受官方六位码（GB/T 2260）和十二位码（国家统计局），精确匹配优先，`normalizeCode()` 返回映射后的包内代码。只按官方后缀裁剪：省级 `…0000`、市级 `…00`、乡镇 `…000`（十二位 → 九位）、县级 `…000000`。无法识别的代码（如 `130299`、`110101999000`）返回未命中，不会退化为上级；村级十二位码不在收录范围内。
+- **县级十二位码**始终落到区县本身，即使其下有编号为 `000` 的级 3 记录（`150524000000` → 库伦旗 `150524`，而非库伦街道 `150524000`；`710101000000` → 中正区 `710101`）。只有级 2 占位层保留九位命中（`419001000000` → `419001000`）。
+- **同名占位层**：不设区的地级市（东莞、中山、儋州）和省直辖县级市（济源、仙桃、潜江、天门、新疆兵团城市、海南省直辖县级市等）在市与乡镇之间有一个同名的级 2 占位层（东莞市 `4419` → 东莞市 `441900` → 街道），其官方十二位码落到该层（`441900000000` → `441900`）。其中的县级市在包内记为级 1。
+- **台湾、香港、澳门**：台湾有 20 个市/县和 358 个区/乡/镇/县辖市（级 2），各有一条同名的级 3 镜像（中正区 `710101` → `710101000`），没有真实的乡镇数据。港澳为 特别行政区 → 两层同名中间层（`8100`、`810000`）→ 区（澳门为堂区）；由于精确匹配优先，官方码 `810000`、`820000` 落到级 2 中间层，而不是 `81`、`82`。三地数据比内地快照更旧，仅供参考。
 
-## Regenerating artifacts
+## 许可
 
-- `sql/postgresql/divisions.sql` is generated from the JSONL
-  (`npm run generate:sql`). Never edit it by hand.
-- Re-importing from an upstream SQL dump is done with
-  `npm run import:seed -- --source=<file>`; the normalization rules above are
-  applied automatically.
-
-## License
-
-Code: MIT (see [LICENSE](LICENSE)).
-Data: administrative-division codes and names are factual public information
-published by government authorities; this compilation is distributed under MIT
-as well. No warranty is given as to fitness for any particular use — verify
-against official publications for legal purposes.
+- **代码**：MIT，见 [LICENSE](LICENSE)。
+- **数据**：行政区划代码与名称是政府机构发布的公开事实信息，本汇编同样以 MIT 许可发布。不保证适用于任何特定用途；用于法律等正式场合时，请以官方发布为准。

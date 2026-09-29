@@ -67,16 +67,18 @@ Guidance for coding agents working in this repository.
   JSONL ↔ SQL round trip.
 - `tests/data.test.ts` pins the total and per-level row counts. A data change
   must also update `DATA_VERSION` in `src/types.ts`, the counts in
-  `README.md` / `README_zh.md` / `NOTICE.md`, and `CHANGELOG.md`.
+  `README.md` / `README_en.md` / `NOTICE.md` / `NOTICE_en.md`, and
+  `CHANGELOG.md`.
 - Import normalization (drop the `91` "国外" tree, fix `~n` pinyin prefixes on
   `71`/`81`/`82`) lives in `scripts/import-seed.ts` and is documented in
-  `NOTICE.md`; keep the two in sync.
+  `NOTICE.md` / `NOTICE_en.md`; keep them in sync.
 
 ## Docs
 
-- `README.md` (English) and `README_zh.md` (Chinese) mirror each other —
-  update both. The "code and hierarchy conventions" text is repeated in both
-  READMEs and `NOTICE.md`.
+- `README.md` / `NOTICE.md` (Chinese, the default) and `README_en.md` /
+  `NOTICE_en.md` (English) mirror each other — update both languages. The
+  full "code and hierarchy conventions" live in the NOTICEs; the READMEs
+  carry a short summary linking there, so keep the summary consistent.
 - User-visible changes go in `CHANGELOG.md` (Keep a Changelog). Keep the
   heading format `## [x.y.z] — YYYY-MM-DD`: the release workflow extracts the
   release notes by matching `## [<version>]`.
