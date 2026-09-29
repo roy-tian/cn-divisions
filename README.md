@@ -49,26 +49,38 @@ getDivision("110101001000")?.fullName; // "东华门街道" (→ "110101001")
 normalizeCode("131000"); // "1310" (official code → package code)
 
 children("1310").map((d) => d.fullName); // under 廊坊市: 三河市、香河县, …
+children("0"); // all 34 province-level entries
 ancestors("110101").map((d) => d.fullName); // [ "北京市", "北京市" ]
 subtree("11"); // nested tree under 北京
 search({ name: "三河" }); // substring over name/fullName
 search({ pinyin: "dong guan" }); // full-pinyin substring, case/space-insensitive
+search({ pinyin: "lüliang" }); // ü is stored as v ("lv liang"); both spellings match
 search({ pinyinPrefix: "b", level: 0 }); // [ 北京 ]
 countByLevel(); // { 0: 34, 1: 392, 2: 3210, 3: 39478 }
 ```
 
 All data loads lazily on first call and is cached in memory (~43k rows,
 one-time parse). Returned records are frozen (including `subtree()` nodes)
-and arrays are copies — callers cannot corrupt the cache.
+and typed `readonly`, and arrays are copies — callers cannot corrupt the
+cache. `search()` throws a `TypeError` on unknown option keys or mistyped
+values (e.g. `level: "0"`) instead of silently ignoring them.
+
+Pinyin is toneless and space-separated. `ü` is written `v` (吕梁 `lv liang`),
+except `üe`, which follows the usual spelling `ue` (略阳 `lue yang`).
 
 ## Code and hierarchy conventions
 
 - **Package code lengths**: province 2 digits (`11`), city 4 (`1101`), county
   6 (`110101`), township 9 (`110101001`). Every lookup additionally accepts
   official 6/12-digit codes (exact match preferred). Trims follow official
-  suffix shapes only — province `…0000`, city `…00`, NBS county aggregation
-  (`…000000`); invalid codes such as `130299` or `110101999000` return
-  not-found instead of collapsing onto an ancestor.
+  suffix shapes only — province `…0000`, city `…00`, NBS township `…000`
+  (12 → 9 digits), NBS county aggregation (`…000000`); invalid codes such as
+  `130299` or `110101999000` return not-found instead of collapsing onto an
+  ancestor. A county aggregation code resolves to the county even when a
+  level-3 record under it is numbered `000` — a township (`150524000000` →
+  库伦旗 `150524`, not 库伦街道 `150524000`) or a same-named mirror
+  (`710101000000` → 中正区 `710101`); only a level-2 placeholder keeps the
+  9-digit hit (`419001000000` → `419001000`).
 - **District-less prefecture cities and province-direct county-level cities**
   (东莞, 中山, 儋州; 济源, 仙桃, 潜江, 天门, XPCC cities, Hainan directs)
   keep a same-named placeholder level-2 layer between city and township, e.g.
@@ -76,10 +88,19 @@ and arrays are copies — callers cannot corrupt the cache.
   return consecutive same-named entries — dedupe for display. These
   county-level cities are typed as level 1; their official 12-digit codes
   resolve to the placeholder record (`441900000000` → `441900`, level 2).
-- **Taiwan / Hong Kong / Macau**: Taiwan goes down to cities/counties and a
-  few districts only; HK/MO are chains of 特别行政区 → placeholder layer →
-  districts. Data under `71`/`81`/`82` is older than the mainland snapshot —
-  treat it as indicative.
+- **Exceptions to the code lengths**: province-direct county-level cities keep
+  their 6-digit official code at level 1 and their placeholder takes a 9-digit
+  `…000` code (济源市 `419001` → 济源市 `419001000` → 沁园街道 `419001001`);
+  HK/MO districts hang off a 6-digit layer with 9-digit codes (`810000` →
+  `810101000`). A child code is therefore not always prefixed by its parent's
+  — follow `parentCode` instead of truncating codes.
+- **Taiwan / Hong Kong / Macau**: Taiwan has 20 cities/counties and 358
+  districts/townships (level 2), each mirrored by a same-named level-3 record
+  (中正区 `710101` → `710101000`); there is no real township data. HK/MO are
+  chains of 特别行政区 → two same-named layers (`8100`, `810000`) → districts
+  (Macau: 堂区). Since exact matches win, the official codes `810000` /
+  `820000` resolve to the level-2 layer, not to `81` / `82`. Data under
+  `71`/`81`/`82` is older than the mainland snapshot — treat it as indicative.
 - **Data vintage**: the snapshot only has a lower bound (≥ 2023-04, see
   [NOTICE.md](NOTICE.md)); later reorganizations (撤县设区, township mergers,
   …) are not included.
@@ -93,7 +114,10 @@ The package also ships the raw files, exposed as subpath imports:
 - `cn-divisions/sql/postgresql/divisions.sql` — batched `INSERT`s for a
   `divisions` table, prefixed with `CREATE TABLE IF NOT EXISTS` and a
   `parent_code` index, so it runs as-is against an empty database
-  (regenerate with `npm run generate:sql`)
+  (regenerate with `npm run generate:sql`). Load it atomically with
+  `psql --single-transaction -f divisions.sql`. Rows that already exist fail
+  with a duplicate-key error rather than silently mixing two releases —
+  `TRUNCATE` the table first to reload a newer release.
 
 ```ts
 import { createRequire } from "node:module";
@@ -113,7 +137,10 @@ inconsistent update fails CI.
 Runtime supports Node ≥ 18, but developing and testing require **Node ≥ 23.6**
 — tests run `.ts` files directly via native type stripping. Yarn PnP users
 must switch to `nodeLinker: node-modules` (or unplug this package): the data
-file is read via `fs`, and PnP zip virtual paths are not readable.
+file is read via `fs`, and PnP zip virtual paths are not readable. For the
+same reason, when bundling server code (webpack, Next.js, Vite SSR, esbuild)
+mark `cn-divisions` as external — the data file is located relative to the
+installed package at runtime.
 
 ## License
 

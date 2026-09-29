@@ -3,8 +3,8 @@
 ## What this data is
 
 `data/divisions.jsonl` holds China's administrative divisions (行政区划) in the
-GB/T 2260 code system: 34 province-level entries (23 省, 5 自治区, 4 直辖市,
-台湾, 香港, 澳门), then cities, counties, and township/street entries —
+GB/T 2260 code system: 34 province-level entries (23 省 including 台湾省,
+5 自治区, 4 直辖市, 香港, 澳门), then cities, counties, and township/street entries —
 43,114 rows in total, each with pinyin (spaced syllables and initial letter)
 and a full official name.
 
@@ -54,20 +54,34 @@ date.
   Official 6-digit GB/T 2260 codes and 12-digit NBS codes (township +
   trailing `000`) are accepted by every lookup and resolved exact/longest
   first; `normalizeCode()` exposes the mapping. Trims follow official suffix
-  shapes only — province `…0000`, city `…00`, NBS county aggregation
-  (`…000000`); unrecognized codes (e.g. `130299`, `110101999000`) return
-  not-found rather than collapsing onto an ancestor. Village-level 12-digit
-  codes are out of scope and intentionally do not resolve.
+  shapes only — province `…0000`, city `…00`, NBS township `…000` (12 → 9
+  digits), NBS county aggregation (`…000000`); unrecognized codes (e.g.
+  `130299`, `110101999000`) return not-found rather than collapsing onto an
+  ancestor. A county aggregation code resolves to the county even when a
+  level-3 record under it is numbered `000` — a township (`150524000000` →
+  库伦旗 `150524`, not 库伦街道 `150524000`) or a same-named mirror
+  (`710101000000` → 中正区 `710101`); only a level-2 placeholder keeps the
+  9-digit hit (`419001000000` → `419001000`). Village-level 12-digit codes
+  are out of scope and intentionally do not resolve.
 - District-less prefecture cities (东莞, 中山, 儋州) and province-direct
   county-level cities (济源, 仙桃, 潜江, 天门, XPCC cities, Hainan directs)
   carry a same-named placeholder level-2 layer between city and township
   (东莞市 `4419` → 东莞市 `441900` → streets). These county-level cities are
   typed as level 1 (city); their official 12-digit codes resolve to the
   placeholder record (`441900000000` → `441900`).
-- Taiwan has city/county and a few district levels only (no data below
-  counties); Hong Kong and Macau are chains of SAR → placeholder layer →
-  districts. Data under `71`/`81`/`82` is older than the mainland snapshot;
-  treat it as indicative.
+- Exceptions to the code lengths: province-direct county-level cities keep
+  their 6-digit official code at level 1 and their placeholder takes a
+  9-digit `…000` code (济源市 `419001` → 济源市 `419001000` → 沁园街道
+  `419001001`); HK/MO districts hang off a 6-digit layer with 9-digit codes
+  (`810000` → `810101000`). A child code is therefore not always prefixed by
+  its parent's — follow `parentCode` instead of truncating codes.
+- Taiwan has 20 cities/counties and 358 districts/townships (level 2), each
+  mirrored by a same-named level-3 record (中正区 `710101` → `710101000`);
+  there is no real township data. Hong Kong and Macau are chains of SAR →
+  two same-named layers (`8100`, `810000`) → districts (Macau: 堂区). Since
+  exact matches win, the official codes `810000` / `820000` resolve to the
+  level-2 layer, not to `81` / `82`. Data under `71`/`81`/`82` is older than
+  the mainland snapshot; treat it as indicative.
 
 ## Regenerating artifacts
 
