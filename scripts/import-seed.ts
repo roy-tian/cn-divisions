@@ -1,5 +1,5 @@
 // 一次性导入:解析上游 hr-regions.sql 种子 → 规范化 → data/divisions.jsonl。
-// 用法:node scripts/import-seed.ts --source /path/to/hr-regions.sql
+// 用法:node scripts/import-seed.ts --source=/path/to/hr-regions.sql
 //
 // 规范化规则(与 NOTICE.md 一致):
 // 1. 剔除"国外"伪树(91/9100/910000/910000000)——它是下游应用的过滤约定,不是行政区划;

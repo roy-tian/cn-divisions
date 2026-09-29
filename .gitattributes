@@ -1,0 +1,2 @@
+# 统一 LF:数据与 SQL 的逐行解析、SQL 往返测试都假定 LF 行尾
+* text=auto eol=lf

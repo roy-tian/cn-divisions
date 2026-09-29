@@ -1,6 +1,6 @@
 {
   "name": "cn-divisions",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "China administrative divisions dataset — 43,000+ entries across province / city / county / township levels with pinyin, plus a typed lookup API. Zero runtime dependencies. 中国行政区划数据(省、市、区县、乡镇街道四级,含拼音),附 TypeScript 查询 API。",
   "keywords": [
     "china",
@@ -39,9 +39,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./data/*": "./data/*",
     "./sql/*": "./sql/*",

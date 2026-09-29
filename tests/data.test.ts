@@ -5,6 +5,10 @@ import test from "node:test";
 import { allDivisions, countByLevel, getDivision } from "../src/index.ts";
 
 const divisions = allDivisions();
+const sql = readFileSync(
+  new URL("../sql/postgresql/divisions.sql", import.meta.url),
+  "utf-8",
+);
 
 test("snapshot size and per-level counts", () => {
   assert.equal(divisions.length, 43_114);
@@ -58,6 +62,13 @@ test("every parent reference exists and is one level up", () => {
   }
 });
 
+// search({ name }) 只匹配 fullName,依赖此约束(见 src/index.ts)
+test("every fullName contains its short name", () => {
+  for (const d of divisions) {
+    assert.ok(d.fullName.includes(d.name), `name not in fullName at ${d.code}`);
+  }
+});
+
 test("pinyin prefix matches the first pinyin syllable", () => {
   for (const d of divisions) {
     const first = d.pinyin.split(" ")[0];
@@ -70,23 +81,22 @@ test("pinyin prefix matches the first pinyin syllable", () => {
   }
 });
 
+// 字段值按 SQL 字面量解析:单引号在值内转义为 ''。
+const SQL_ROW_RE =
+  /^\('((?:[^']|'')*)', '((?:[^']|'')*)', (\d+), '((?:[^']|'')*)', '((?:[^']|'')*)', '((?:[^']|'')*)', '((?:[^']|'')*)'\)[,;]?$/gm;
+const unquote = (value: string): string => value.replaceAll("''", "'");
+
 test("committed SQL matches the JSONL payload (round trip)", () => {
-  const sql = readFileSync(
-    new URL("../sql/postgresql/divisions.sql", import.meta.url),
-    "utf-8",
-  );
-  const rowRe =
-    /^\('([^']*)', '([^']*)', (\d+), '([^']*)', '([^']*)', '([^']*)', '([^']*)'\)[,;]?$/gm;
   const fromSql: unknown[] = [];
-  for (const match of sql.matchAll(rowRe)) {
+  for (const match of sql.matchAll(SQL_ROW_RE)) {
     fromSql.push({
-      code: match[1],
-      parentCode: match[2],
+      code: unquote(match[1]),
+      parentCode: unquote(match[2]),
       level: Number(match[3]),
-      name: match[4],
-      pinyinPrefix: match[5],
-      pinyin: match[6],
-      fullName: match[7],
+      name: unquote(match[4]),
+      pinyinPrefix: unquote(match[5]),
+      pinyin: unquote(match[6]),
+      fullName: unquote(match[7]),
     });
   }
   assert.equal(fromSql.length, divisions.length);
@@ -94,10 +104,7 @@ test("committed SQL matches the JSONL payload (round trip)", () => {
 });
 
 test("seed SQL opens with CREATE TABLE DDL", () => {
-  const head = readFileSync(
-    new URL("../sql/postgresql/divisions.sql", import.meta.url),
-    "utf-8",
-  ).slice(0, 2000);
+  const head = sql.slice(0, 2000);
   assert.ok(head.includes('CREATE TABLE IF NOT EXISTS "divisions"'));
   assert.ok(
     head.includes('CREATE INDEX IF NOT EXISTS "divisions_parent_code_idx"'),

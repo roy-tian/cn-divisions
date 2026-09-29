@@ -7,8 +7,9 @@ import {
   children,
   countByLevel,
   DATA_VERSION,
-  type Division,
+  type DivisionNode,
   getDivision,
+  LEVEL_NAMES,
   normalizeCode,
   search,
   subtree,
@@ -68,10 +69,56 @@ test("search matches full pinyin, space and case insensitive", () => {
   assert.deepEqual(search({ pinyin: "bu cun zai de yin xyz" }), []);
 });
 
+test("search maps ü input to the data's v / ue spellings", () => {
+  const lvliang = search({ pinyin: "lvliang" });
+  assert.ok(lvliang.some((d) => d.fullName === "吕梁市"));
+  assert.deepEqual(search({ pinyin: "lüliang" }), lvliang);
+  assert.deepEqual(search({ pinyin: "LÜ LIANG" }), lvliang);
+  // 分解形式 u + U+0308 经 NFC 归一
+  assert.deepEqual(search({ pinyin: "lu\u0308liang" }), lvliang);
+  // üe 在数据中记作 ue(略阳 "lue yang")
+  assert.deepEqual(
+    search({ pinyin: "lüeyang" }),
+    search({ pinyin: "lueyang" }),
+  );
+  assert.ok(search({ pinyin: "lüeyang" }).some((d) => d.name === "略阳"));
+  // ü 后接 e 开头的音节仍按 v 匹配(女儿河 "nv er he")
+  assert.ok(
+    search({ pinyin: "nüerhe" }).some((d) => d.fullName === "女儿河街道"),
+  );
+});
+
 test("search rejects unknown option keys", () => {
   assert.throws(() => search({ pinyinFull: "dong guan" } as never), TypeError);
   // 已知键的合法组合不受影响
   assert.equal(search({ pinyinPrefix: "b", level: 0 }).length, 1);
+});
+
+test("search validates option values", () => {
+  const total = allDivisions().length;
+  assert.equal(search().length, total);
+  assert.throws(() => search(null as never), /must be an object/);
+  assert.throws(() => search({ name: 1 } as never), /"name" must be a string/);
+  assert.throws(() => search({ level: "0" } as never), /"level" must be 0, 1/);
+  assert.throws(() => search({ level: 4 } as never), /"level" must be 0, 1/);
+  assert.throws(() => search({ level: 1.5 } as never), TypeError);
+  // 继承属性与 getter 同样经过校验
+  assert.throws(
+    () => search(Object.create({ level: "0" }) as never),
+    /"level" must be 0, 1/,
+  );
+  assert.throws(
+    () =>
+      search({
+        get name() {
+          return 1;
+        },
+      } as never),
+    /"name" must be a string/,
+  );
+  // undefined / null 视为未设置
+  assert.equal(search({ name: undefined, level: undefined }).length, total);
+  assert.equal(search({ name: null, level: null }).length, total);
 });
 
 test("returned records are frozen and arrays are copies", () => {
@@ -81,16 +128,27 @@ test("returned records are frozen and arrays are copies", () => {
   const kids = children("11");
   kids.pop();
   assert.equal(children("11").length, 1);
-  const all = allDivisions() as unknown as Division[];
+  const total = allDivisions().length;
+  const all = allDivisions();
   all.pop();
-  assert.equal(allDivisions().length, 43_114);
+  assert.equal(allDivisions().length, total);
   const tree = subtree("11")!;
   assert.throws(() => {
-    tree.children[0].name = "x";
+    (tree.children[0] as { name: string }).name = "x";
   });
   assert.throws(() => {
-    tree.children.pop();
+    (tree.children as DivisionNode[]).pop();
   });
+  assert.throws(() => {
+    (LEVEL_NAMES as Record<number, string>)[0] = "x";
+  });
+});
+
+test("children('0') lists the province-level entries", () => {
+  const provinces = children("0");
+  assert.equal(provinces.length, countByLevel()[0]);
+  assert.ok(provinces.every((d) => d.level === 0));
+  assert.equal(provinces[0].code, "11");
 });
 
 test("official 6/12-digit codes resolve to package codes", () => {
@@ -111,6 +169,16 @@ test("official 6/12-digit codes resolve to package codes", () => {
   // 不设区城市的十二位全码命中同名占位层(见 NOTICE.md 占位层约定)
   assert.equal(getDivision("441900000000")?.code, "441900");
   assert.equal(getDivision("441900000000")?.level, 2);
+  assert.equal(getDivision("419001000000")?.code, "419001000"); // 济源九位占位层
+  // 县聚集码不被县下编号恰为 000 的级 3 记录劫持:非标乡镇
+  assert.equal(getDivision("150524000000")?.code, "150524"); // 库伦旗,非 150524000 库伦街道
+  assert.equal(getDivision("320508000000")?.code, "320508"); // 姑苏区
+  // ……以及无下级的同名级 3 副本
+  assert.equal(getDivision("460301000000")?.code, "460301"); // 西沙区(级 2)
+  assert.equal(getDivision("710101000000")?.code, "710101"); // 中正区(级 2)
+  assert.equal(getDivision("710101000")?.level, 3); // 九位精确查询仍命中副本
+  // 父级不是同码六位县的九位记录照常命中(港澳区级)
+  assert.equal(getDivision("810101000000")?.code, "810101000");
 
   assert.deepEqual(
     children("110000").map((d) => d.code),
@@ -129,6 +197,7 @@ test("normalizeCode maps official codes and falls back by length rules", () => {
   assert.equal(normalizeCode("110101001000"), "110101001");
   assert.equal(normalizeCode("110101"), "110101");
   assert.equal(normalizeCode("441900"), "441900");
+  assert.equal(normalizeCode("150524000000"), "150524");
   assert.equal(normalizeCode("990000"), "99"); // 无法识别 → 按位数规则裁剪
   assert.equal(normalizeCode("110101001001"), "110101001001");
   assert.equal(normalizeCode("130299"), "130299");

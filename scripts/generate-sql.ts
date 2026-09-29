@@ -22,6 +22,9 @@ const divisions: Division[] = readFileSync(
 const header = `-- Generated from data/divisions.jsonl — do not edit by hand.
 -- Regenerate with: npm run generate:sql
 -- Columns: code PK, parent_code, level (0 province, 1 city, 2 county, 3 township), name, pinyin_prefix, pinyin, full_name
+-- Load atomically with: psql --single-transaction -f divisions.sql
+-- Existing codes fail with a duplicate-key error by design (no silent mixing of
+-- releases): TRUNCATE "divisions" first to reload from a newer release.
 
 CREATE TABLE IF NOT EXISTS "divisions" (
   "code" text PRIMARY KEY,
