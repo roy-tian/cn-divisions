@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Document the NBS public-code availability change effective October 2024,
+  confirmed in its 2025-08-25 reply. Require level-specific authoritative
+  sources, dates and coverage for future data changes, with a source ledger
+  and PR review checklist. No canonical data, data version or package version
+  changes.
 - `README.md` and `NOTICE.md` are now in Chinese; the English versions moved
   to `README_en.md` and `NOTICE_en.md` (`README_zh.md` is gone). All four
   were reorganized for readability; the READMEs now summarize the code and

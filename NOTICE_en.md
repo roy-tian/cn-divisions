@@ -8,14 +8,60 @@
 China in the GB/T 2260 code system: 34 province-level entries (23 provinces
 including 台湾省, 5 autonomous regions, 4 municipalities, 2 SARs) and the
 cities, counties and townships/streets under them, each with pinyin and the
-full official name. The codes and names are official public data from:
+full official name. Relevant official sources and their historical coverage
+are listed below; this does not establish row-by-row verification of this
+dump or guarantee continued public availability:
 
 - **民政部** (Ministry of Civil Affairs) — 行政区划代码, county level and above
-- **国家统计局** (National Bureau of Statistics) — 统计用区划代码和城乡划分代码,
-  township/street level
+- **国家统计局** (National Bureau of Statistics; historical public source) —
+  statistical division and urban/rural classification codes, including townships/streets
 
 This repository's data was derived from a downstream project's seed dump whose
 upstream publication date is undocumented, so it is dated as described below.
+
+### Official source availability change
+
+In its [official reply dated 2025-08-25](https://www.stats.gov.cn/hd/lyzx/zxgk/202509/t20250903_1960996.html),
+the NBS Department of Statistical Design and Management stated that, since
+**October 2024**, NBS no longer publicly discloses the specific statistical
+division and urban/rural classification codes. Related standards and compilation
+rules remain public. Future township updates must therefore not assume that
+the former public NBS code pages remain an ongoing data feed. This reply
+documents source availability, not a new division snapshot, and does not
+change the dating of the existing dataset.
+
+### Evidence required for future changes
+
+Every data PR must append entries to the [source ledger](data/SOURCES.md)
+and link them in the PR. Record each actual administrative level separately;
+explain any mapping that differs from the package's `level`:
+
+| Actual level                 | Acceptable public authoritative evidence                                                                                          | Coverage limits                                                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Province, prefecture, county | Public division-code tables from civil affairs authorities, or formal notices/approvals from competent governments or departments | Identify each covered level, region, date and field; county-and-above publications do not establish township codes                          |
+| Township, town, street       | Formal public publications from governments, civil affairs or statistical authorities responsible for that area and matter        | Verify each change to codes, names and parent relationships; a renaming or merger notice without codes does not justify deriving a new code |
+
+For each source, record publisher, title, original public URL, publication
+date, data reference/effective date if available, access date, administrative
+and geographic coverage, supported fields, affected codes and before/after
+values. If the publication date is unknown, say so and explain why; never
+substitute the access date. Do not merge portions with insufficient evidence.
+
+For township changes that cannot be verified through public authoritative
+sources, retain existing records, list the unresolved questions in the PR or
+an issue, and defer those changes. Do not infer codes or changes from code
+patterns, hierarchy or similar names, or silently substitute third-party
+mirrors, scraped collections or downstream packages. Such materials are leads,
+not sufficient evidence on their own. An omitted entry or an unavailable old
+URL alone does not establish that a division was abolished.
+
+For derived fields such as short names, pinyin, trimmed codes and placeholder
+layers, document the authoritative facts and explicit transformation rules;
+do not present package conventions as officially assigned codes. Partial or
+mixed-date updates must state what remains outside their coverage; the newest
+source date does not establish a nationwide four-level refresh. Maintainers
+review the ledger and PR checklist manually; row-count and SQL consistency
+tests cannot verify source authenticity.
 
 ## Snapshot dating
 
@@ -31,8 +77,10 @@ in the data:
 | 白杨市                                | 2023-04     |
 
 The snapshot is therefore no older than April 2023, with no established upper
-bound. `DATA_VERSION` is `snapshot-2023` for now; when the dataset is refreshed
-from a dated upstream publication, set it to that date.
+bound. `DATA_VERSION` remains `snapshot-2023`. Use an upstream snapshot date
+only after a complete refresh to that dated snapshot; partial updates must
+separately describe dates and coverage by level and region. This maintenance
+policy update changes neither data, `DATA_VERSION` nor the package version.
 
 ## Normalization applied to the source dump
 
