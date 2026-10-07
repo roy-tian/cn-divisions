@@ -118,6 +118,31 @@ psql --single-transaction -f divisions.sql
 Existing codes fail with a duplicate-key error rather than silently mixing
 two releases; `TRUNCATE` the table before loading a newer release.
 
+## Updating the data
+
+The [NBS reply dated 2025-08-25](https://www.stats.gov.cn/hd/lyzx/zxgk/202509/t20250903_1960996.html)
+confirms that specific statistical division and urban/rural classification
+codes have no longer been publicly disclosed since **October 2024**; related
+standards and compilation rules remain public. Do not assume the former
+public NBS code pages remain an ongoing source for township updates.
+
+1. Verify public authoritative evidence under [NOTICE_en.md](NOTICE_en.md#evidence-required-for-future-changes).
+   Append publisher, original URL, publication date, data reference date,
+   coverage and before/after values by level to the [source ledger](data/SOURCES.md).
+   Every data PR must link these entries for maintainer review.
+2. Defer township changes that cannot be verified through public authoritative
+   sources; retain existing records and list unresolved questions. Never
+   silently substitute inference or third-party mirrors. A parent-division
+   or renaming notice alone does not establish township codes.
+3. For supported changes, edit `data/divisions.jsonl`, run `npm run generate:sql`,
+   and update count tests and documentation, `DATA_VERSION` and [CHANGELOG.md](CHANGELOG.md).
+   Partial updates must identify their level, regional and date boundaries
+   rather than claim a nationwide refresh.
+4. After existing CI passes, manually review how sources support the changes.
+   Update the package version through the release process when publishing a
+   data release; maintenance-policy-only edits do not refresh data, change
+   `DATA_VERSION` or publish a new version.
+
 ## License
 
 MIT for both the code and this data compilation. Data provenance, snapshot
